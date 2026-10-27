@@ -1,0 +1,16 @@
+# Regla por defecto: detectar texto automáticamente y normalizar a LF
+* text=auto eol=lf
+
+# Scripts de Windows: requieren CRLF para ejecutarse bien en cmd.exe
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Archivos binarios: no tocar fin de línea ni intentar diff/merge de texto
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.jar binary
