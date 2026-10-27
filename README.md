@@ -118,7 +118,7 @@ Necesita Docker en marcha: la prueba de contexto levanta un PostgreSQL 18 real c
 
 | Etapa | Versión | Contenido | Estado |
 |---|---|---|---|
-| 0. Base limpia | `v0.1.0` | Java 25 + Spring Boot 4.1, PostgreSQL + Flyway, CI, Dev Container, documentación | 🚧 |
+| 0. Base limpia | `v0.1.0` | Java 25 + Spring Boot 4.1, PostgreSQL + Flyway, CI, Dev Container, documentación | ✅ |
 | 1. Categorías y cimientos de la API | `v0.2.0` | CRUD, DTOs, validación, `ProblemDetail`, paginación, OpenAPI | ⏳ |
 | 2. Productos | `v0.3.0` | SKU único, baja lógica, filtros, bloqueo optimista | ⏳ |
 | 3. Seguridad | `v0.4.0` | Usuarios, JWT, roles `ADMIN`/`OPERATOR`, CORS | ⏳ |
