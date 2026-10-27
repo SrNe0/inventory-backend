@@ -1,0 +1,48 @@
+{
+	"name": "inventory-backend",
+	"image": "mcr.microsoft.com/devcontainers/base:trixie",
+
+	"features": {
+		"ghcr.io/devcontainers/features/java:1": {
+			"version": "25",
+			"jdkDistro": "tem",
+			"installMaven": false
+		},
+		// En Debian trixie no existen los paquetes de Moby: se usa Docker CE.
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {
+			"moby": false
+		}
+	},
+
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"vscjava.vscode-java-pack",
+				"vmware.vscode-boot-dev-pack",
+				"redhat.vscode-yaml",
+				"ms-azuretools.vscode-docker"
+			]
+		},
+		"jetbrains": {
+			"backend": "IntelliJ"
+		}
+	},
+
+	// Se ejecuta una sola vez al crear el contenedor: crea .env si no existe.
+	"postCreateCommand": "[ -f .env ] || cp .env.example .env",
+
+	// Se ejecuta cada vez que arranca el contenedor: espera al daemon de
+	// docker-in-docker y levanta PostgreSQL con el compose.yaml del repo.
+	// `--wait` espera a que el healthcheck de postgres esté en "healthy".
+	"postStartCommand": "timeout 60 sh -c 'until docker info >/dev/null 2>&1; do sleep 1; done' && docker compose up -d --wait",
+
+	"forwardPorts": [8080, 5432],
+
+	// Valores de desarrollo (deben coincidir con .env.example) para que la app
+	// reciba las variables de entorno al ejecutarse dentro del Dev Container.
+	"remoteEnv": {
+		"DB_URL": "jdbc:postgresql://localhost:5432/inventory",
+		"DB_USER": "inventory",
+		"DB_PASSWORD": "cambia-esta-clave"
+	}
+}
