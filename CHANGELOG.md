@@ -6,6 +6,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-27
+
 ### Added
 - Flyway para las migraciones del esquema, con la migración inicial `V1__esquema_inicial.sql`.
 - PostgreSQL 18 como base de datos, con `compose.yaml` para desarrollo local y `.env.example` con las variables de entorno.
@@ -24,3 +26,6 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 ### Removed
 - Conector de MySQL.
 - Ramas `develop` y `feature/category`.
+
+[Unreleased]: https://github.com/SrNe0/inventory-backend/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/SrNe0/inventory-backend/releases/tag/v0.1.0
