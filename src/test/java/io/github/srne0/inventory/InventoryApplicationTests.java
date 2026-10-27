@@ -1,4 +1,4 @@
-package com.company.inventory;
+package io.github.srne0.inventory;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
