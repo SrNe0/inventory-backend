@@ -5,8 +5,6 @@ import io.github.srne0.inventory.category.dto.CategoryResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.NoSuchElementException;
-
 @Service
 @Transactional
 public class CategoryService {
@@ -18,7 +16,13 @@ public class CategoryService {
     }
 
     public CategoryResponse create(CategoryRequest request) {
-        Category category = new Category(trim(request.name()), trim(request.description()));
+        String name = trim(request.name());
+        if (repository.existsByNameIgnoreCase(name)) {
+            throw new DuplicateCategoryNameException(name);
+        }
+        Category category = new Category(name, trim(request.description()));
+        // Si dos peticiones pasan la comprobación a la vez, el índice único
+        // lower(name) rechaza la segunda y el advice lo traduce a 409.
         return CategoryResponse.from(repository.save(category));
     }
 
@@ -29,7 +33,11 @@ public class CategoryService {
 
     public CategoryResponse update(Long id, CategoryRequest request) {
         Category category = find(id);
-        category.setName(trim(request.name()));
+        String name = trim(request.name());
+        if (repository.existsByNameIgnoreCaseAndIdNot(name, id)) {
+            throw new DuplicateCategoryNameException(name);
+        }
+        category.setName(name);
         category.setDescription(trim(request.description()));
         // Sin save(): la entidad está gestionada y Hibernate detecta el cambio.
         // El flush adelanta el UPDATE para que updatedAt (@PreUpdate) ya esté
@@ -42,10 +50,8 @@ public class CategoryService {
         repository.delete(find(id));
     }
 
-    // Provisional: en el #16 pasa a una excepción de dominio que se traduce a 404.
     private Category find(Long id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Categoría no encontrada: " + id));
+        return repository.findById(id).orElseThrow(() -> new CategoryNotFoundException(id));
     }
 
     private static String trim(String value) {

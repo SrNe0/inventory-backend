@@ -9,12 +9,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -63,10 +63,39 @@ class CategoryServiceTests {
     }
 
     @Test
-    @DisplayName("get de un id inexistente lanza NoSuchElementException")
+    @DisplayName("get de un id inexistente lanza CategoryNotFoundException")
     void getMissingThrows() {
         when(repository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service().get(99L)).isInstanceOf(NoSuchElementException.class);
+        assertThatThrownBy(() -> service().get(99L)).isInstanceOf(CategoryNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("delete de un id inexistente lanza CategoryNotFoundException")
+    void deleteMissingThrows() {
+        when(repository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service().delete(99L)).isInstanceOf(CategoryNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("create con un nombre ya usado lanza DuplicateCategoryNameException y no guarda")
+    void createDuplicateThrows() {
+        when(repository.existsByNameIgnoreCase("Bebidas")).thenReturn(true);
+
+        assertThatThrownBy(() -> service().create(new CategoryRequest(" Bebidas ", null)))
+                .isInstanceOf(DuplicateCategoryNameException.class);
+
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("update con el nombre de otra categoría lanza DuplicateCategoryNameException")
+    void updateDuplicateThrows() {
+        when(repository.findById(1L)).thenReturn(Optional.of(new Category("Viejo", null)));
+        when(repository.existsByNameIgnoreCaseAndIdNot("Bebidas", 1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service().update(1L, new CategoryRequest("Bebidas", null)))
+                .isInstanceOf(DuplicateCategoryNameException.class);
     }
 }

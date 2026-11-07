@@ -4,6 +4,7 @@ import io.github.srne0.inventory.category.dto.CategoryRequest;
 import io.github.srne0.inventory.category.dto.CategoryResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
@@ -21,6 +22,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -105,5 +107,80 @@ class CategoryControllerTests {
                 .andExpect(status().isNoContent());
 
         verify(service).delete(7L);
+    }
+
+    @Test
+    @DisplayName("GET de una categoría inexistente devuelve 404 como ProblemDetail")
+    void getMissingReturns404() throws Exception {
+        when(service.get(99L)).thenThrow(new CategoryNotFoundException(99L));
+
+        mockMvc.perform(get("/api/v1/categories/99"))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.title").value("Not Found"))
+                .andExpect(jsonPath("$.detail").value("No existe una categoría con id 99"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/categories/99"));
+    }
+
+    @Test
+    @DisplayName("POST con nombre duplicado devuelve 409")
+    void createDuplicateReturns409() throws Exception {
+        when(service.create(any(CategoryRequest.class)))
+                .thenThrow(new DuplicateCategoryNameException("Bebidas"));
+
+        mockMvc.perform(post("/api/v1/categories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Bebidas\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.detail").value("Ya existe una categoría con el nombre \"Bebidas\""));
+    }
+
+    @Test
+    @DisplayName("una violación de integridad devuelve 409 sin filtrar detalles internos")
+    void integrityViolationReturns409WithoutLeaking() throws Exception {
+        when(service.create(any(CategoryRequest.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate key value violates uk_category_name_lower"));
+
+        mockMvc.perform(post("/api/v1/categories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Bebidas\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("La operación viola una restricción de integridad"))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("uk_category_name_lower"))));
+    }
+
+    @Test
+    @DisplayName("la validación devuelve 400 con los errores por campo")
+    void validationReturnsFieldErrors() throws Exception {
+        mockMvc.perform(post("/api/v1/categories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"   \"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.detail").value("La petición tiene campos inválidos"))
+                .andExpect(jsonPath("$.errors[0].field").value("name"))
+                .andExpect(jsonPath("$.errors[0].message").value("El nombre es obligatorio"));
+    }
+
+    @Test
+    @DisplayName("un id que no es número devuelve 400")
+    void invalidIdReturns400() throws Exception {
+        mockMvc.perform(get("/api/v1/categories/abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    @DisplayName("un JSON mal formado devuelve 400")
+    void malformedJsonReturns400() throws Exception {
+        mockMvc.perform(post("/api/v1/categories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
     }
 }
