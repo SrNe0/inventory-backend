@@ -6,12 +6,18 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-07
+
 ### Added
 - CRUD de categorías en `/api/v1/categories` (`POST`, `GET`, `PUT`, `DELETE`) con DTOs, validación y recorte de espacios.
 - Migración `V2__categorias.sql`: tabla `category` con nombre único sin distinguir mayúsculas.
 - Errores estandarizados con `ProblemDetail` (RFC 9457): `400` con errores por campo, `404` y `409`.
 - Listado de categorías paginado y ordenable (`PagedModel`; tamaño 20 por defecto y 100 como máximo; orden validado con lista blanca).
 - Documentación OpenAPI y Swagger UI con springdoc (`/v3/api-docs`, `/swagger-ui.html`).
+- Pruebas en tres capas: unitarias (Mockito), de slice (`@WebMvcTest`, `@DataJpaTest`) y de integración con PostgreSQL real, además de una prueba de concurrencia y otra del contrato OpenAPI.
+
+### Changed
+- El orden del listado añade `id` como último criterio para que la paginación no repita ni salte filas cuando hay empates.
 
 ## [0.1.0] - 2026-10-27
 
@@ -34,5 +40,6 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - Conector de MySQL.
 - Ramas `develop` y `feature/category`.
 
-[Unreleased]: https://github.com/SrNe0/inventory-backend/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/SrNe0/inventory-backend/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/SrNe0/inventory-backend/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/SrNe0/inventory-backend/releases/tag/v0.1.0
