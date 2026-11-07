@@ -47,7 +47,7 @@ src/main/java/io/github/srne0/inventory/
 └── common/      # errores (ProblemDetail), configuración, paginación
 ```
 
-Hoy solo existe la clase `InventoryApplication`. El modelo de datos se agrega junto con cada entidad.
+Hoy existen `InventoryApplication`, el paquete `category` (entidad, repositorio, servicio, controlador y `dto/`) y `common` (errores con `ProblemDetail`, paginación y configuración de OpenAPI). El resto se agrega por etapas.
 
 ## Cómo correrlo
 
@@ -97,13 +97,32 @@ Abre el repositorio en VS Code con la extensión Dev Containers y elige **Reopen
 
 `.env` no se versiona. Ningún secreto vive en el repositorio.
 
+## API y documentación
+
+Con la aplicación en marcha (puerto `8080`, o el de `SERVER_PORT`):
+
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- Especificación OpenAPI (JSON): `http://localhost:8080/v3/api-docs`
+
+Hoy está disponible el CRUD de categorías en `/api/v1/categories`:
+
+| Método | Ruta | Respuestas |
+|---|---|---|
+| `POST` | `/api/v1/categories` | `201` (con `Location`), `400`, `409` |
+| `GET` | `/api/v1/categories` | `200`, `400` |
+| `GET` | `/api/v1/categories/{id}` | `200`, `400`, `404` |
+| `PUT` | `/api/v1/categories/{id}` | `200`, `400`, `404`, `409` |
+| `DELETE` | `/api/v1/categories/{id}` | `204`, `404` |
+
+El listado devuelve un `PagedModel` (`content` y `page`). El tamaño por defecto es 20 y el máximo 100: un `size` mayor se recorta en silencio, así que conviene leer siempre `page.totalElements`. Se puede ordenar con `sort` por `id`, `name`, `createdAt` o `updatedAt` (por defecto `name` ascendente). Los errores usan `application/problem+json` (RFC 9457) y las validaciones añaden `errors` con el campo y el mensaje.
+
 ## Pruebas
 
 ```bash
 ./mvnw verify
 ```
 
-Necesita Docker en marcha: la prueba de contexto levanta un PostgreSQL 18 real con Testcontainers y aplica las migraciones de Flyway. No necesita variables de entorno. La misma verificación corre en CI en cada pull request.
+Necesita Docker en marcha: las pruebas de repositorio, de contexto y del contrato OpenAPI levantan un PostgreSQL 18 real con Testcontainers y aplican las migraciones de Flyway. El controlador se prueba con `@WebMvcTest` y el servicio con Mockito, sin base de datos. No necesita variables de entorno. La misma verificación corre en CI en cada pull request.
 
 ## Decisiones técnicas
 
@@ -119,7 +138,7 @@ Necesita Docker en marcha: la prueba de contexto levanta un PostgreSQL 18 real c
 | Etapa | Versión | Contenido | Estado |
 |---|---|---|---|
 | 0. Base limpia | `v0.1.0` | Java 25 + Spring Boot 4.1, PostgreSQL + Flyway, CI, Dev Container, documentación | ✅ |
-| 1. Categorías y cimientos de la API | `v0.2.0` | CRUD, DTOs, validación, `ProblemDetail`, paginación, OpenAPI | ⏳ |
+| 1. Categorías y cimientos de la API | `v0.2.0` | CRUD, DTOs, validación, `ProblemDetail`, paginación, OpenAPI | 🚧 |
 | 2. Productos | `v0.3.0` | SKU único, baja lógica, filtros, bloqueo optimista | ⏳ |
 | 3. Seguridad | `v0.4.0` | Usuarios, JWT, roles `ADMIN`/`OPERATOR`, CORS | ⏳ |
 | 4. Movimientos de inventario | `v0.5.0` | Entradas, salidas y ajustes inmutables, concurrencia | ⏳ |

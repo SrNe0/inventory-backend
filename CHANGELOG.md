@@ -6,6 +6,13 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Added
+- CRUD de categorías en `/api/v1/categories` (`POST`, `GET`, `PUT`, `DELETE`) con DTOs, validación y recorte de espacios.
+- Migración `V2__categorias.sql`: tabla `category` con nombre único sin distinguir mayúsculas.
+- Errores estandarizados con `ProblemDetail` (RFC 9457): `400` con errores por campo, `404` y `409`.
+- Listado de categorías paginado y ordenable (`PagedModel`; tamaño 20 por defecto y 100 como máximo; orden validado con lista blanca).
+- Documentación OpenAPI y Swagger UI con springdoc (`/v3/api-docs`, `/swagger-ui.html`).
+
 ## [0.1.0] - 2026-10-27
 
 ### Added
