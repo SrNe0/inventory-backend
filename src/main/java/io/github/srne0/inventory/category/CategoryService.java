@@ -3,7 +3,9 @@ package io.github.srne0.inventory.category;
 import io.github.srne0.inventory.category.dto.CategoryRequest;
 import io.github.srne0.inventory.category.dto.CategoryResponse;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,7 +35,18 @@ public class CategoryService {
     @Transactional(readOnly = true)
     public Page<CategoryResponse> list(Pageable pageable) {
         sortValidator.validate(pageable);
-        return repository.findAll(pageable).map(CategoryResponse::from);
+        return repository.findAll(withIdTiebreaker(pageable)).map(CategoryResponse::from);
+    }
+
+    // Con empates en el campo de orden (p. ej. createdAt) PostgreSQL no garantiza el orden
+    // entre filas iguales, y la paginación podría repetir o saltar filas. El id (único)
+    // como último criterio hace el orden total.
+    private static Pageable withIdTiebreaker(Pageable pageable) {
+        if (pageable.isUnpaged() || pageable.getSort().getOrderFor("id") != null) {
+            return pageable;
+        }
+        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
+                pageable.getSort().and(Sort.by("id")));
     }
 
     @Transactional(readOnly = true)

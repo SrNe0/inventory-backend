@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
 import java.util.List;
@@ -100,13 +101,42 @@ class CategoryServiceTests {
     @DisplayName("list devuelve la página mapeada a DTOs")
     void listMapsToDtos() {
         PageRequest pageable = PageRequest.of(0, 20, Sort.by("name"));
-        when(repository.findAll(pageable))
+        when(repository.findAll(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(new Category("Bebidas", null)), pageable, 1));
 
         Page<CategoryResponse> page = service().list(pageable);
 
         assertThat(page.getTotalElements()).isEqualTo(1);
         assertThat(page.getContent()).extracting(CategoryResponse::name).containsExactly("Bebidas");
+    }
+
+    @Test
+    @DisplayName("list añade el id como último criterio de orden")
+    void listAddsIdTiebreaker() {
+        when(repository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+
+        service().list(PageRequest.of(2, 10, Sort.by(Sort.Direction.DESC, "createdAt")));
+
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(repository).findAll(captor.capture());
+        assertThat(captor.getValue().getPageNumber()).isEqualTo(2);
+        assertThat(captor.getValue().getPageSize()).isEqualTo(10);
+        assertThat(captor.getValue().getSort().stream().map(Sort.Order::getProperty))
+                .containsExactly("createdAt", "id");
+        assertThat(captor.getValue().getSort().getOrderFor("createdAt").isDescending()).isTrue();
+    }
+
+    @Test
+    @DisplayName("list no duplica el id si ya se ordena por él")
+    void listKeepsExplicitIdOrder() {
+        when(repository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+
+        service().list(PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "id")));
+
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(repository).findAll(captor.capture());
+        assertThat(captor.getValue().getSort().stream().map(Sort.Order::getProperty)).containsExactly("id");
+        assertThat(captor.getValue().getSort().getOrderFor("id").isDescending()).isTrue();
     }
 
     @Test
