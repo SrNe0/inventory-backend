@@ -9,6 +9,9 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -52,6 +55,33 @@ class CategoryRepositoryTests {
 
         assertThatThrownBy(() -> repository.saveAndFlush(new Category("bebidas", null)))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("pagina y ordena por nombre, con el total correcto")
+    void pagesAndSortsByName() {
+        repository.saveAndFlush(new Category("Cárnicos", null));
+        repository.saveAndFlush(new Category("Bebidas", null));
+        repository.saveAndFlush(new Category("Lácteos", null));
+
+        Page<Category> first = repository.findAll(PageRequest.of(0, 2, Sort.by("name")));
+        Page<Category> second = repository.findAll(PageRequest.of(1, 2, Sort.by("name")));
+
+        assertThat(first.getTotalElements()).isEqualTo(3);
+        assertThat(first.getTotalPages()).isEqualTo(2);
+        assertThat(first.getContent()).extracting(Category::getName).containsExactly("Bebidas", "Cárnicos");
+        assertThat(second.getContent()).extracting(Category::getName).containsExactly("Lácteos");
+    }
+
+    @Test
+    @DisplayName("ordena de forma descendente")
+    void sortsDescending() {
+        repository.saveAndFlush(new Category("Bebidas", null));
+        repository.saveAndFlush(new Category("Lácteos", null));
+
+        Page<Category> page = repository.findAll(PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "name")));
+
+        assertThat(page.getContent()).extracting(Category::getName).containsExactly("Lácteos", "Bebidas");
     }
 
     @Test
