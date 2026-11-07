@@ -2,6 +2,8 @@ package io.github.srne0.inventory.category;
 
 import io.github.srne0.inventory.category.dto.CategoryRequest;
 import io.github.srne0.inventory.category.dto.CategoryResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -10,9 +12,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class CategoryService {
 
     private final CategoryRepository repository;
+    private final CategorySortValidator sortValidator;
 
-    public CategoryService(CategoryRepository repository) {
+    public CategoryService(CategoryRepository repository, CategorySortValidator sortValidator) {
         this.repository = repository;
+        this.sortValidator = sortValidator;
     }
 
     public CategoryResponse create(CategoryRequest request) {
@@ -24,6 +28,12 @@ public class CategoryService {
         // Si dos peticiones pasan la comprobación a la vez, el índice único
         // lower(name) rechaza la segunda y el advice lo traduce a 409.
         return CategoryResponse.from(repository.save(category));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CategoryResponse> list(Pageable pageable) {
+        sortValidator.validate(pageable);
+        return repository.findAll(pageable).map(CategoryResponse::from);
     }
 
     @Transactional(readOnly = true)
