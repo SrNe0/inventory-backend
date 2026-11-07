@@ -2,13 +2,19 @@ package io.github.srne0.inventory.category;
 
 import io.github.srne0.inventory.category.dto.CategoryRequest;
 import io.github.srne0.inventory.category.dto.CategoryResponse;
+import io.github.srne0.inventory.common.pagination.InvalidSortException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -16,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -25,7 +32,7 @@ class CategoryServiceTests {
     private CategoryRepository repository;
 
     private CategoryService service() {
-        return new CategoryService(repository);
+        return new CategoryService(repository, new CategorySortValidator());
     }
 
     @Test
@@ -87,6 +94,29 @@ class CategoryServiceTests {
                 .isInstanceOf(DuplicateCategoryNameException.class);
 
         verify(repository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("list devuelve la página mapeada a DTOs")
+    void listMapsToDtos() {
+        PageRequest pageable = PageRequest.of(0, 20, Sort.by("name"));
+        when(repository.findAll(pageable))
+                .thenReturn(new PageImpl<>(List.of(new Category("Bebidas", null)), pageable, 1));
+
+        Page<CategoryResponse> page = service().list(pageable);
+
+        assertThat(page.getTotalElements()).isEqualTo(1);
+        assertThat(page.getContent()).extracting(CategoryResponse::name).containsExactly("Bebidas");
+    }
+
+    @Test
+    @DisplayName("list con un orden no permitido lanza InvalidSortException sin consultar la BD")
+    void listInvalidSortThrows() {
+        PageRequest pageable = PageRequest.of(0, 20, Sort.by("password"));
+
+        assertThatThrownBy(() -> service().list(pageable)).isInstanceOf(InvalidSortException.class);
+
+        verifyNoInteractions(repository);
     }
 
     @Test

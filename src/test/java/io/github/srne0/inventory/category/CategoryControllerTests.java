@@ -2,17 +2,25 @@ package io.github.srne0.inventory.category;
 
 import io.github.srne0.inventory.category.dto.CategoryRequest;
 import io.github.srne0.inventory.category.dto.CategoryResponse;
+import io.github.srne0.inventory.common.pagination.InvalidSortException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Set;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -98,6 +106,77 @@ class CategoryControllerTests {
                         .content("{\"name\":\"Lácteos\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Lácteos"));
+    }
+
+    @Test
+    @DisplayName("GET de la lista devuelve un PagedModel con content y page")
+    void listReturnsPagedModel() throws Exception {
+        PageRequest pageable = PageRequest.of(0, 20);
+        when(service.list(any(Pageable.class))).thenReturn(new PageImpl<>(
+                List.of(new CategoryResponse(1L, "Bebidas", null, NOW, NOW)), pageable, 41));
+
+        mockMvc.perform(get("/api/v1/categories"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].name").value("Bebidas"))
+                .andExpect(jsonPath("$.page.size").value(20))
+                .andExpect(jsonPath("$.page.number").value(0))
+                .andExpect(jsonPath("$.page.totalElements").value(41))
+                .andExpect(jsonPath("$.page.totalPages").value(3))
+                .andExpect(jsonPath("$.pageable").doesNotExist())
+                .andExpect(jsonPath("$.sort").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("sin parámetros usa tamaño 20 y orden por name ascendente")
+    void listUsesDefaults() throws Exception {
+        when(service.list(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/v1/categories")).andExpect(status().isOk());
+
+        Pageable pageable = capturePageable();
+        assertThat(pageable.getPageNumber()).isZero();
+        assertThat(pageable.getPageSize()).isEqualTo(20);
+        assertThat(pageable.getSort().getOrderFor("name")).isNotNull();
+        assertThat(pageable.getSort().getOrderFor("name").isAscending()).isTrue();
+    }
+
+    @Test
+    @DisplayName("un size mayor que 100 se recorta a 100")
+    void listClampsSize() throws Exception {
+        when(service.list(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/v1/categories").param("size", "500")).andExpect(status().isOk());
+
+        assertThat(capturePageable().getPageSize()).isEqualTo(100);
+    }
+
+    @Test
+    @DisplayName("sort=createdAt,desc llega al servicio como orden descendente")
+    void listPassesSort() throws Exception {
+        when(service.list(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/v1/categories").param("sort", "createdAt,desc")).andExpect(status().isOk());
+
+        assertThat(capturePageable().getSort().getOrderFor("createdAt").isDescending()).isTrue();
+    }
+
+    @Test
+    @DisplayName("un orden no permitido devuelve 400 como ProblemDetail")
+    void listInvalidSortReturns400() throws Exception {
+        when(service.list(any(Pageable.class)))
+                .thenThrow(new InvalidSortException("password", Set.of("id", "name")));
+
+        mockMvc.perform(get("/api/v1/categories").param("sort", "password"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.detail")
+                        .value("No se puede ordenar por \"password\". Campos permitidos: id, name"));
+    }
+
+    private Pageable capturePageable() {
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(service).list(captor.capture());
+        return captor.getValue();
     }
 
     @Test

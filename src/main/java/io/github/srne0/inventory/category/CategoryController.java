@@ -3,6 +3,9 @@ package io.github.srne0.inventory.category;
 import io.github.srne0.inventory.category.dto.CategoryRequest;
 import io.github.srne0.inventory.category.dto.CategoryResponse;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedModel;
+import org.springframework.data.web.SortDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -36,6 +39,13 @@ public class CategoryController {
                 .buildAndExpand(created.id())
                 .toUri();
         return ResponseEntity.created(location).body(created);
+    }
+
+    // @SortDefault (y no @PageableDefault, que fijaría size=10) para que el tamaño
+    // por defecto salga de spring.data.web.pageable.default-page-size.
+    @GetMapping
+    public PagedModel<CategoryResponse> list(@SortDefault("name") Pageable pageable) {
+        return new PagedModel<>(service.list(pageable));
     }
 
     @GetMapping("/{id}")
